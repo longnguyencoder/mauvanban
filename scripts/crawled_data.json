@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Hợp đồng",
+    "url": "https://mauvanban.vn/hop-dong",
+    "slug": "hop-dong",
+    "documents": []
+  },
+  {
+    "name": "Đơn từ",
+    "url": "https://mauvanban.vn/don-tu",
+    "slug": "don-tu",
+    "documents": []
+  },
+  {
+    "name": "Biên bản",
+    "url": "https://mauvanban.vn/bien-ban",
+    "slug": "bien-ban",
+    "documents": []
+  },
+  {
+    "name": "Giấy ủy quyền",
+    "url": "https://mauvanban.vn/giay-uy-quyen",
+    "slug": "giay-uy-quyen",
+    "documents": []
+  }
+]
