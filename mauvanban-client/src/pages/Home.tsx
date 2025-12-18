@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { documentsApi } from '../api/documents';
 import { categoriesApi } from '../api/categories';
+import { API_BASE_URL } from '../api/axios';
 import {
     BriefcaseIcon,
     AcademicCapIcon,
@@ -45,7 +46,7 @@ export default function Home() {
         const className = "w-8 h-8 text-primary-600 group-hover:scale-110 transition-transform duration-300 object-contain";
 
         if (iconName && (iconName.startsWith('/') || iconName.startsWith('http'))) {
-            const imageUrl = iconName.startsWith('/') ? `http://localhost:5000${iconName}` : iconName;
+            const imageUrl = iconName.startsWith('/') ? `${API_BASE_URL}${iconName}` : iconName;
             return <img src={imageUrl} alt="icon" className={className} />;
         }
 
@@ -162,7 +163,7 @@ export default function Home() {
                                 <div className="h-48 bg-gray-100 -mx-6 -mt-6 mb-4 flex items-center justify-center overflow-hidden relative">
                                     {doc.thumbnail_url ? (
                                         <img
-                                            src={`http://localhost:5000${doc.thumbnail_url}`}
+                                            src={`${API_BASE_URL}${doc.thumbnail_url}`}
                                             alt={doc.title}
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         />

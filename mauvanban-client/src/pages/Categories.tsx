@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { categoriesApi } from '../api/categories';
+import { API_BASE_URL } from '../api/axios';
 import {
     BriefcaseIcon,
     AcademicCapIcon,
@@ -14,7 +15,7 @@ import {
     FolderIcon
 } from '@heroicons/react/24/outline';
 
-const SERVER_URL = 'http://localhost:5000'; // Should be from config/env
+
 
 export default function Categories() {
     const { data: categories, isLoading } = useQuery({
@@ -32,7 +33,7 @@ export default function Categories() {
 
         // Method 1: Check for Image URL
         if (iconName && (iconName.startsWith('/') || iconName.startsWith('http'))) {
-            const imageUrl = iconName.startsWith('/') ? `${SERVER_URL}${iconName}` : iconName;
+            const imageUrl = iconName.startsWith('/') ? `${API_BASE_URL}${iconName}` : iconName;
             return <img src={imageUrl} alt="icon" className={className} />;
         }
 

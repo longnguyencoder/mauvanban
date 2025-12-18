@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { categoriesApi, Category } from '../../../api/categories';
-import api from '../../../api/axios';
+import api, { API_BASE_URL } from '../../../api/axios';
 
 // Extend Category type to include display_order if missing
 interface CategoryWithOrder extends Category {
@@ -212,7 +212,7 @@ export default function CreateCategory() {
                                     <p className="text-xs text-gray-500 mb-1">Xem trước:</p>
                                     {formData.icon.startsWith('/') || formData.icon.startsWith('http') ? (
                                         <img
-                                            src={formData.icon.startsWith('/') ? `http://localhost:5000${formData.icon}` : formData.icon}
+                                            src={formData.icon.startsWith('/') ? `${API_BASE_URL}${formData.icon}` : formData.icon}
                                             alt="Category Icon"
                                             className="w-16 h-16 object-contain border rounded-lg p-1"
                                         />

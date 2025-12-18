@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { API_BASE_URL } from '../api/axios';
 
 export default function Contact() {
     const [formData, setFormData] = useState({
@@ -14,7 +15,7 @@ export default function Contact() {
         e.preventDefault();
         setSending(true);
         try {
-            await fetch('http://localhost:5000/api/contact', {
+            await fetch(`${API_BASE_URL}/api/contact`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

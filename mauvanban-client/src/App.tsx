@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
+import { Toaster } from 'react-hot-toast';
 
 // Pages
 import Home from './pages/Home';
@@ -38,6 +39,7 @@ function App() {
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
+            <Toaster position="top-right" />
             <Header />
             <main className="flex-grow">
                 <Routes>

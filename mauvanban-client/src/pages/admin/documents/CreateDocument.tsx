@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import api from '../../../api/axios';
+import api, { API_BASE_URL } from '../../../api/axios';
 import { categoriesApi, Category } from '../../../api/categories';
 
 export default function CreateDocument() {
     const navigate = useNavigate();
     const [isUploading, setIsUploading] = useState(false);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
     const [formData, setFormData] = useState({
         code: '',
         title: '',
@@ -14,8 +16,6 @@ export default function CreateDocument() {
         price: 0,
         description: '',
         content: '', // For preview text
-        file_url: '',
-        file_type: '',
         thumbnail_url: '',
         is_featured: false
     });
@@ -25,46 +25,45 @@ export default function CreateDocument() {
         queryFn: categoriesApi.getAll,
     });
 
-    // 1. Upload Mutation
-    const uploadMutation = useMutation({
-        mutationFn: async ({ file, isThumbnail }: { file: File; isThumbnail: boolean }) => {
+    // 1. Thumbnail Upload Mutation
+    const uploadThumbnailMutation = useMutation({
+        mutationFn: async (file: File) => {
             const form = new FormData();
             form.append('file', file);
-            // Select endpoint based on type
-            const endpoint = isThumbnail ? '/upload/image' : '/upload/document';
-
-            const res = await api.post(endpoint, form, {
+            const res = await api.post('/upload/image', form, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            return { ...res.data, isThumbnail };
+            return res.data;
         },
         onSuccess: (data) => {
             setIsUploading(false);
-            if (data.isThumbnail) {
-                // Update thumbnail
-                setFormData(prev => ({
-                    ...prev,
-                    thumbnail_url: data.data.file_url
-                }));
-            } else {
-                // Update main document
-                setFormData(prev => ({
-                    ...prev,
-                    file_url: data.data.file_url,
-                    file_type: data.data.file_type
-                }));
-                // Auto-fill title if empty and not thumbnail
-                if (!formData.title && data.data.original_filename) {
-                    setFormData(prev => ({ ...prev, title: data.data.original_filename }));
-                }
-            }
+            setFormData(prev => ({
+                ...prev,
+                thumbnail_url: data.data.file_url
+            }));
         },
         onError: () => setIsUploading(false)
     });
 
-    // 2. Create Document Mutation
+    // 2. Create Document Mutation (FormData)
     const createMutation = useMutation({
-        mutationFn: (data: any) => api.post('/admin/documents/json', data),
+        mutationFn: async (data: any) => {
+            const form = new FormData();
+
+            // Append files
+            selectedFiles.forEach(file => {
+                form.append('files[]', file);
+            });
+
+            // Append other fields
+            Object.keys(data).forEach(key => {
+                form.append(key, data[key]);
+            });
+
+            return api.post('/admin/documents', form, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+        },
         onSuccess: () => {
             alert('Thêm văn bản thành công!');
             navigate('/admin/documents');
@@ -74,19 +73,39 @@ export default function CreateDocument() {
         }
     });
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, isThumbnail: boolean = false) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files);
+            setSelectedFiles(prev => [...prev, ...files]);
+
+            // Auto-fill title from first file if empty
+            if (!formData.title && files[0]) {
+                const name = files[0].name.replace(/\.[^/.]+$/, "");
+                setFormData(prev => ({ ...prev, title: name }));
+            }
+        }
+    };
+
+    const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setIsUploading(true);
-            uploadMutation.mutate({ file: e.target.files[0], isThumbnail });
+            uploadThumbnailMutation.mutate(e.target.files[0]);
         }
+    };
+
+    const removeFile = (index: number) => {
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.file_url) {
-            alert('Vui lòng upload file văn bản chính!');
-            return;
+
+        if (selectedFiles.length === 0) {
+            if (!window.confirm('Bạn chưa chọn file tài liệu nào. Tiếp tục tạo văn bản rỗng?')) {
+                return;
+            }
         }
+
         createMutation.mutate(formData);
     };
 
@@ -161,21 +180,39 @@ export default function CreateDocument() {
                 {/* Upload & Details */}
                 <div className="space-y-4 md:col-span-1">
                     {/* Main Document Upload */}
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition">
-                        <label className="cursor-pointer block">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:bg-gray-50 transition">
+                        <label className="cursor-pointer block text-center mb-4">
                             <span className="text-3xl block mb-2">📄</span>
-                            <span className="font-bold text-gray-700 block">File Văn Bản Chính *</span>
+                            <span className="font-bold text-gray-700 block">Chọn File Tài Liệu</span>
                             <span className="text-sm text-gray-500">
-                                {isUploading ? 'Đang upload...' : formData.file_url ? 'Đã upload: ' + formData.file_url.split('/').pop() : 'Click để chọn file (.doc, .pdf)'}
+                                Click để chọn nhiều file (.doc, .pdf)
                             </span>
                             <input
                                 type="file"
                                 className="hidden"
+                                multiple
                                 accept=".pdf,.doc,.docx,.xls,.xlsx"
-                                onChange={(e) => handleFileChange(e, false)}
-                                disabled={isUploading}
+                                onChange={handleFileChange}
                             />
                         </label>
+
+                        {/* File List */}
+                        {selectedFiles.length > 0 && (
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {selectedFiles.map((file, index) => (
+                                    <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded text-sm">
+                                        <span className="truncate max-w-[200px]">{file.name}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeFile(index)}
+                                            className="text-red-500 hover:text-red-700"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Thumbnail Upload */}
@@ -184,27 +221,23 @@ export default function CreateDocument() {
                             <span className="text-3xl block mb-2">🖼️</span>
                             <span className="font-bold text-gray-700 block">Ảnh Bìa (Thumbnail)</span>
                             <span className="text-sm text-gray-500">
-                                {isUploading ? 'Đang upload...' : formData.thumbnail_url ? 'Đã upload: ' + formData.thumbnail_url.split('/').pop() : 'Click để chọn ảnh (.png, .jpg, .pdf)'}
+                                {isUploading ? 'Đang upload...' : formData.thumbnail_url ? 'Đã upload thumbnail' : 'Click để chọn ảnh (.png, .jpg)'}
                             </span>
                             <input
                                 type="file"
                                 className="hidden"
-                                accept="image/*,.pdf"
-                                onChange={(e) => handleFileChange(e, true)}
+                                accept="image/*"
+                                onChange={handleThumbnailChange}
                                 disabled={isUploading}
                             />
                         </label>
                         {formData.thumbnail_url && (
                             <div className="mt-2 text-center">
-                                {formData.thumbnail_url.toLowerCase().endsWith('.pdf') ? (
-                                    <div className="text-red-500 font-bold border p-2 rounded">PDF Thumbnail</div>
-                                ) : (
-                                    <img
-                                        src={`http://localhost:5000${formData.thumbnail_url}`}
-                                        alt="Preview"
-                                        className="h-20 mx-auto object-cover rounded border"
-                                    />
-                                )}
+                                <img
+                                    src={`${API_BASE_URL}${formData.thumbnail_url}`}
+                                    alt="Preview"
+                                    className="h-20 mx-auto object-cover rounded border"
+                                />
                             </div>
                         )}
                     </div>

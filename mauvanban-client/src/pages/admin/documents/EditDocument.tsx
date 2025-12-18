@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentsApi } from '../../../api/documents';
 import { categoriesApi } from '../../../api/categories';
-import api from '../../../api/axios';
+import api, { API_BASE_URL } from '../../../api/axios';
 
 export default function EditDocument() {
     const { id } = useParams<{ id: string }>();
@@ -200,7 +200,7 @@ export default function EditDocument() {
                                 <div className="mt-2">
                                     <p className="text-xs text-gray-500 mb-1">Xem trước:</p>
                                     <img
-                                        src={formData.thumbnail_url.startsWith('/') ? `http://localhost:5000${formData.thumbnail_url}` : formData.thumbnail_url}
+                                        src={formData.thumbnail_url.startsWith('/') ? `${API_BASE_URL}${formData.thumbnail_url}` : formData.thumbnail_url}
                                         alt="Preview"
                                         className="h-32 w-auto object-cover rounded border shadow-sm"
                                     />

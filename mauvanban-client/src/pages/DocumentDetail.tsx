@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { documentsApi } from '../api/documents';
+import { API_BASE_URL } from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 import PaymentModal from '../components/common/PaymentModal';
 import DocumentBadges from '../components/DocumentBadges';
@@ -23,7 +24,7 @@ export default function DocumentDetail() {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
 
-    const { data, isLoading, error } = useQuery({
+    const { data, isLoading, error, refetch } = useQuery({
         queryKey: ['document', slug],
         queryFn: () => documentsApi.getBySlug(slug!),
         enabled: !!slug,
@@ -34,8 +35,8 @@ export default function DocumentDetail() {
     const handleDownload = async () => {
         if (!doc) return;
 
-        // If free, download immediately
-        if (doc.price === 0) {
+        // If free or already purchased, download immediately
+        if (doc.price === 0 || doc.has_purchased) {
             try {
                 const res = await documentsApi.download(doc.id);
                 window.open(res.data.data.download_url, '_blank');
@@ -45,7 +46,7 @@ export default function DocumentDetail() {
             return;
         }
 
-        // If paid, show payment modal
+        // If paid and not purchased, show payment modal
         setIsPaymentModalOpen(true);
     };
 
@@ -88,12 +89,20 @@ export default function DocumentDetail() {
         );
     }
 
+    const handlePaymentSuccess = async () => {
+        setIsPaymentModalOpen(false);
+        // Refetch document data to update has_purchased status
+        await refetch();
+        alert('Thanh toán thành công! Bạn đã có thể tải tài liệu.');
+    };
+
     return (
         <div className="min-h-screen gradient-bg py-8">
             <PaymentModal
                 isOpen={isPaymentModalOpen}
                 onClose={() => setIsPaymentModalOpen(false)}
                 document={doc}
+                onSuccess={handlePaymentSuccess}
             />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -156,12 +165,12 @@ export default function DocumentDetail() {
                                 <div className="flex flex-col sm:flex-row gap-4">
                                     <button
                                         onClick={handleDownload}
-                                        className="btn-download justify-center"
+                                        className={`btn-download justify-center ${doc.has_purchased ? 'bg-green-600 hover:bg-green-700' : ''}`}
                                     >
                                         <ArrowDownTrayIcon className="w-6 h-6" />
-                                        <span>TẢI NGAY</span>
+                                        <span>{doc.has_purchased ? 'TẢI VỀ (ĐÃ MUA)' : 'TẢI NGAY'}</span>
                                         <span className="font-bold">
-                                            {doc.price === 0 ? 'MIỄN PHÍ' : `${doc.price.toLocaleString()}₫`}
+                                            {doc.has_purchased ? '' : (doc.price === 0 ? 'MIỄN PHÍ' : `${doc.price.toLocaleString()}₫`)}
                                         </span>
                                     </button>
                                 </div>
@@ -204,30 +213,80 @@ export default function DocumentDetail() {
                                 Xem trước văn bản
                             </h2>
 
-                            <div className="document-preview">
-                                {doc.thumbnail_url ? (
-                                    <div className="relative">
-                                        <img
-                                            src={`http://localhost:5000${doc.thumbnail_url}`}
-                                            alt={doc.title}
-                                            className="w-full h-auto rounded-lg"
-                                        />
-                                        <div className="document-watermark">
-                                            1/2 trang
+                            <div className="document-preview space-y-8">
+                                {/* Case 1: Multiple Files */}
+                                {doc.files && doc.files.length > 0 ? (
+                                    doc.files.map((file: any, index: number) => (
+                                        <div key={file.id || index} className="mb-8 last:mb-0">
+                                            <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                                <span className="bg-gray-200 text-gray-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">
+                                                    {index + 1}
+                                                </span>
+                                                {file.original_filename || `Tài liệu ${index + 1}`}
+                                            </h3>
+
+                                            {file.preview_url ? (
+                                                <div className="relative group">
+                                                    <img
+                                                        src={`${API_BASE_URL}${file.preview_url}`}
+                                                        alt={`Preview ${file.original_filename}`}
+                                                        className="w-full h-auto rounded-lg shadow-sm border border-gray-100"
+                                                    />
+                                                    <div className="document-watermark">
+                                                        Xem trước trang 1
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                /* Fallback: If it's the first file and we have a document thumbnail (manual upload), show it */
+                                                (index === 0 && doc.thumbnail_url) ? (
+                                                    <div className="relative group">
+                                                        <img
+                                                            src={`${API_BASE_URL}${doc.thumbnail_url}`}
+                                                            alt={`Preview ${file.original_filename}`}
+                                                            className="w-full h-auto rounded-lg shadow-sm border border-gray-100"
+                                                        />
+                                                        <div className="document-watermark">
+                                                            Ảnh bìa văn bản
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-gray-50 rounded-lg p-8 text-center border border-gray-200">
+                                                        <div className="text-4xl mb-2">
+                                                            {file.file_type === 'pdf' ? '📄' : '📝'}
+                                                        </div>
+                                                        <p className="text-sm text-gray-500">{file.original_filename}</p>
+                                                        <p className="text-xs text-gray-400 mt-1">Không có bản xem trước</p>
+                                                    </div>
+                                                )
+                                            )}
                                         </div>
-                                    </div>
+                                    ))
                                 ) : (
-                                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-16 text-center">
-                                        <div className="text-8xl mb-4">
-                                            {doc.file_type === 'pdf' ? '📄' : '📝'}
+                                    /* Case 2: Legacy Single File/Thumbnail */
+                                    doc.thumbnail_url ? (
+                                        <div className="relative">
+                                            <img
+                                                src={`${API_BASE_URL}${doc.thumbnail_url}`}
+                                                alt={doc.title}
+                                                className="w-full h-auto rounded-lg"
+                                            />
+                                            <div className="document-watermark">
+                                                1/2 trang
+                                            </div>
                                         </div>
-                                        <p className="text-gray-500 font-medium uppercase tracking-wider">
-                                            {doc.file_type}
-                                        </p>
-                                        <p className="text-gray-400 text-sm mt-2">
-                                            Xem trước không khả dụng
-                                        </p>
-                                    </div>
+                                    ) : (
+                                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-16 text-center">
+                                            <div className="text-8xl mb-4">
+                                                {doc.file_type === 'pdf' ? '📄' : '📝'}
+                                            </div>
+                                            <p className="text-gray-500 font-medium uppercase tracking-wider">
+                                                {doc.file_type}
+                                            </p>
+                                            <p className="text-gray-400 text-sm mt-2">
+                                                Xem trước không khả dụng
+                                            </p>
+                                        </div>
+                                    )
                                 )}
                             </div>
 

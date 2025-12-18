@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { documentsApi, Document } from '../api/documents';
+import { API_BASE_URL } from '../api/axios';
 import { categoriesApi, Category } from '../api/categories';
 import { useQuery } from '@tanstack/react-query';
 
@@ -61,8 +62,8 @@ export default function Documents() {
                                 <button
                                     onClick={() => handleCategoryChange(undefined)}
                                     className={`block w-full text-left px-6 py-3 transition-all duration-200 ${!categoryId
-                                            ? 'bg-primary-50 text-primary-700 font-semibold border-l-4 border-primary-600'
-                                            : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent hover:border-gray-300'
+                                        ? 'bg-primary-50 text-primary-700 font-semibold border-l-4 border-primary-600'
+                                        : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent hover:border-gray-300'
                                         }`}
                                 >
                                     <span className="flex items-center gap-2">
@@ -78,8 +79,8 @@ export default function Documents() {
                                     <button
                                         onClick={() => handleCategoryChange(cat.id)}
                                         className={`block w-full text-left px-6 py-3 transition-all duration-200 ${categoryId === cat.id
-                                                ? 'bg-primary-50 text-primary-700 font-semibold border-l-4 border-primary-600'
-                                                : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent hover:border-gray-300'
+                                            ? 'bg-primary-50 text-primary-700 font-semibold border-l-4 border-primary-600'
+                                            : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent hover:border-gray-300'
                                             }`}
                                     >
                                         <span className="flex items-center gap-2">
@@ -111,6 +112,12 @@ export default function Documents() {
                                     type="text"
                                     name="q"
                                     defaultValue={search}
+                                    onChange={(e) => {
+                                        if (e.target.value === '') {
+                                            const newParams = Object.fromEntries(searchParams);
+                                            setSearchParams({ ...newParams, q: '', page: '1' });
+                                        }
+                                    }}
                                     placeholder="Tìm kiếm văn bản, biểu mẫu, hợp đồng..."
                                     className="block w-full pl-12 pr-32 py-4 text-base border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                                 />
@@ -141,7 +148,7 @@ export default function Documents() {
                                         <div className="h-48 bg-gray-100 -mx-6 -mt-6 mb-4 flex items-center justify-center overflow-hidden relative">
                                             {doc.thumbnail_url ? (
                                                 <img
-                                                    src={`http://localhost:5000${doc.thumbnail_url}`}
+                                                    src={`${API_BASE_URL}${doc.thumbnail_url}`}
                                                     alt={doc.title}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                                 />

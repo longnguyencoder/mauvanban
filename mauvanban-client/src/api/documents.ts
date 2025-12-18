@@ -1,6 +1,17 @@
 import api from './axios';
 import { Category } from './categories';
 
+export interface DocumentFile {
+    id: string;
+    document_id: string;
+    file_url: string;
+    preview_url?: string;
+    file_type: string;
+    original_filename: string;
+    file_size: number;
+    display_order: number;
+}
+
 export interface Document {
     id: string; // Changed to string UUID
     code: string;
@@ -18,6 +29,8 @@ export interface Document {
     category?: Category;
     category_id?: number | string;
     is_featured?: boolean;
+    has_purchased?: boolean;
+    files?: DocumentFile[];
 }
 
 export interface DocumentListResponse {
