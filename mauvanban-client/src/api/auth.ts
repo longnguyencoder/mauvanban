@@ -17,9 +17,11 @@ export interface User {
     email: string;
     full_name?: string;
     phone?: string;
+    phone_number?: string;  // Added for compatibility
     role: string;
     balance: number;
     is_active: boolean;
+    created_at?: string;    // Added for profile display
 }
 
 export interface AuthResponse {

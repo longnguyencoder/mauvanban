@@ -36,12 +36,20 @@ class DocumentService:
             query = query.filter_by(is_featured=is_featured)
         
         if search_query:
+            # Clean and normalize search query
+            search_query = search_query.strip()
+            
+            # Create search pattern for partial matching
             search_pattern = f'%{search_query}%'
+            
+            # Search in title, description, code, and content
+            # Using ilike for case-insensitive search (works with Vietnamese)
             query = query.filter(
                 or_(
                     Document.title.ilike(search_pattern),
                     Document.description.ilike(search_pattern),
-                    Document.code.ilike(search_pattern)
+                    Document.code.ilike(search_pattern),
+                    Document.content.ilike(search_pattern)
                 )
             )
         

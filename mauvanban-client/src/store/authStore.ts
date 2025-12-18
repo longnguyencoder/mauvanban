@@ -51,9 +51,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     register: async (data) => {
         try {
             set({ isLoading: true, error: null });
-            const response = await authApi.register(data);
+            await authApi.register(data);
 
-            const { user, access_token, refresh_token } = response.data.data;
+            // After successful registration, automatically login
+            const loginResponse = await authApi.login({
+                email: data.email,
+                password: data.password
+            });
+
+            const { user, access_token, refresh_token } = loginResponse.data.data;
 
             localStorage.setItem('access_token', access_token);
             localStorage.setItem('refresh_token', refresh_token);

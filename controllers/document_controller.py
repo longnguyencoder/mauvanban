@@ -20,7 +20,7 @@ class DocumentList(Resource):
     @document_ns.param('per_page', 'Items per page', type=int, default=20)
     @document_ns.param('category_id', 'Filter by category ID')
     @document_ns.param('is_featured', 'Filter by featured status', type=bool)
-    @document_ns.param('search', 'Search query')
+    @document_ns.param('q', 'Search query')  # Changed from 'search' to 'q'
     @document_ns.param('sort_by', 'Sort field', enum=['created_at', 'views_count', 'downloads_count', 'price'])
     @document_ns.param('sort_order', 'Sort order', enum=['asc', 'desc'])
     def get(self):
@@ -29,7 +29,7 @@ class DocumentList(Resource):
         per_page = request.args.get('per_page', 20, type=int)
         category_id = request.args.get('category_id')
         is_featured = request.args.get('is_featured', type=bool)
-        search = request.args.get('search')
+        search = request.args.get('q')  # Changed from 'search' to 'q'
         sort_by = request.args.get('sort_by', 'created_at')
         sort_order = request.args.get('sort_order', 'desc')
         
