@@ -2,11 +2,10 @@
 File upload controller - Handle document file uploads
 """
 import os
-from flask import request
+from flask import request, current_app
 from flask_restx import Namespace, Resource
 from werkzeug.utils import secure_filename
 from middleware import admin_required
-from config import config
 
 # Create namespace
 upload_ns = Namespace('upload', description='File upload operations')
@@ -101,7 +100,7 @@ class DeleteDocument(Resource):
     def delete(self, current_user, filename):
         """Delete document file"""
         
-        upload_folder = config['development'].UPLOAD_FOLDER
+        upload_folder = current_app.config['UPLOAD_FOLDER']
         file_path = os.path.join(upload_folder, secure_filename(filename))
         
         if not os.path.exists(file_path):
@@ -151,7 +150,7 @@ class UploadImage(Resource):
         unique_filename = f"{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_ext}"
         
         # Save to uploads/documents/images for organization
-        upload_folder = config['development'].UPLOAD_FOLDER
+        upload_folder = current_app.config['UPLOAD_FOLDER']
         images_folder = os.path.join(upload_folder, 'images')
         os.makedirs(images_folder, exist_ok=True)
         

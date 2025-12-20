@@ -10,6 +10,8 @@ from PIL import Image, ImageFilter
 
 logger = logging.getLogger(__name__)
 
+from flask import current_app
+
 class PreviewService:
     """Service to handle preview generation"""
     
@@ -84,10 +86,6 @@ class PreviewService:
                     transparent = Image.new('RGBA', image.size, (0,0,0,0))
                     transparent.paste(watermark, (x, y))
                     
-                    # Overlay watermark (keep image visible behind if logo has transparency, 
-                    # but user said "chèn logo này vào ảnh", usually implies opacity. 
-                    # If logo is solid, it will block text. That's fine for protection.)
-                    
                     # Ensure original is compatible
                     if image.mode != 'RGBA':
                         image = image.convert('RGBA')
@@ -105,7 +103,8 @@ class PreviewService:
                 final_image = image # Fallback to original
             
             # 6. Save preview image
-            upload_folder = config['development'].UPLOAD_FOLDER
+            # Use runtime config from current_app
+            upload_folder = current_app.config['UPLOAD_FOLDER']
             previews_folder = os.path.join(upload_folder, 'previews')
             os.makedirs(previews_folder, exist_ok=True)
             
@@ -116,6 +115,10 @@ class PreviewService:
             # Save as JPEG with high quality
             final_image.save(preview_path, 'JPEG', quality=90)
             
+            # Construct return URL relative to uploads folder
+            # Assuming UPLOAD_FOLDER is like 'uploads/documents' or '/var/www/.../uploads/documents'
+            # We want to return /uploads/documents/previews/...
+            # To be safe, let's keep it consistent with the existing serving route: /uploads/documents/<filename>
             return f"/uploads/documents/previews/{preview_filename}"
             
         except Exception as e:

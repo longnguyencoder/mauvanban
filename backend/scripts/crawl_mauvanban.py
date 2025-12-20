@@ -177,6 +177,7 @@ def save_to_database(categories_data, app):
                             is_featured=(idx <= 2),  # First 2 are featured
                             is_active=True
                         )
+                        document.generate_slug() # Ensure slug is generated
                         db.session.add(document)
                         db.session.flush()
                         

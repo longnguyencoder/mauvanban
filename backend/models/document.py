@@ -33,7 +33,7 @@ class Document(db.Model):
     category_id = db.Column(db.String(36), db.ForeignKey('categories.id'), nullable=False)
     
     # Pricing
-    price = db.Column(db.Numeric(10, 2), default=0, nullable=False)
+    price = db.Column(db.Numeric(18, 2), default=0, nullable=False)
     
     # Statistics
     views_count = db.Column(db.Integer, default=0, nullable=False)

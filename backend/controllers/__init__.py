@@ -23,6 +23,29 @@ api = Api(
     security='Bearer'
 )
 
+# Custom JSON handling for Flask-RESTX
+from flask import make_response
+from decimal import Decimal
+from uuid import UUID
+import json
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, UUID):
+            return str(obj)
+        return super().default(obj)
+
+def output_json(data, code, headers=None):
+    """Custom JSON output function"""
+    content = json.dumps(data, cls=CustomJSONEncoder)
+    resp = make_response(content, code)
+    resp.headers.extend(headers or {})
+    return resp
+
+api.representations['application/json'] = output_json
+
 # Import namespaces after api creation to avoid circular imports
 from .auth_controller import auth_ns
 from .category_controller import category_ns

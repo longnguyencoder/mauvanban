@@ -255,7 +255,7 @@ class AdminDocumentList(Resource):
         """
         import os
         from werkzeug.utils import secure_filename
-        from config import config
+        from flask import current_app
         
         # Check if request has file
         has_file = 'file' in request.files
@@ -317,7 +317,7 @@ class AdminDocumentList(Resource):
                     unique_filename = f"{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_ext}"
                     
                     # Save file
-                    upload_folder = config['development'].UPLOAD_FOLDER
+                    upload_folder = current_app.config['UPLOAD_FOLDER']
                     os.makedirs(upload_folder, exist_ok=True)
                     
                     file_path = os.path.join(upload_folder, unique_filename)

@@ -12,16 +12,7 @@ class TransactionService:
     
     @staticmethod
     def purchase_document(user_id, document_id):
-        """
-        Purchase a document using user balance
-        
-        Args:
-            user_id: User ID
-            document_id: Document ID
-            
-        Returns:
-            tuple: (transaction, error_message)
-        """
+        """Purchase a document using user balance"""
         try:
             user = db.session.get(User, user_id)
             if not user:
@@ -73,16 +64,7 @@ class TransactionService:
     
     @staticmethod
     def purchase_package(user_id, package_id):
-        """
-        Purchase a package using user balance
-        
-        Args:
-            user_id: User ID
-            package_id: Package ID
-            
-        Returns:
-            tuple: (transaction, error_message)
-        """
+        """Purchase a package using user balance"""
         try:
             user = db.session.get(User, user_id)
             if not user:
@@ -132,28 +114,9 @@ class TransactionService:
             db.session.rollback()
             return None, f'Purchase failed: {str(e)}'
     
-            db.session.add(transaction)
-            db.session.commit()
-            
-            return transaction, None
-            
-        except Exception as e:
-            db.session.rollback()
-            return None, f'Purchase failed: {str(e)}'
-    
     @staticmethod
     def create_sepay_payment(user_id, item_type, item_id):
-        """
-        Create a SePay payment request for an item
-        
-        Args:
-            user_id: User ID
-            item_type: 'document' or 'package'
-            item_id: Item ID
-            
-        Returns:
-            tuple: (payment_info, error_message)
-        """
+        """Create a SePay payment request for an item"""
         try:
             # Get user
             user = db.session.get(User, user_id)
@@ -171,7 +134,6 @@ class TransactionService:
                 if not item:
                     return None, 'Document not found'
                 
-                # Check directly purchased
                 if TransactionService.check_user_purchased_document(user_id, item_id):
                     return None, 'Document already purchased'
                     
@@ -184,7 +146,6 @@ class TransactionService:
                 if not item:
                     return None, 'Package not found'
                 
-                # Check already purchased
                 existing = Transaction.query.filter_by(
                     user_id=user_id,
                     package_id=item_id,
@@ -216,7 +177,6 @@ class TransactionService:
                 
             transaction = pending_query.first()
             
-            # Create new transaction if not exists or create a new request for existing one
             if not transaction:
                 transaction = Transaction(
                     user_id=user_id,
@@ -243,7 +203,13 @@ class TransactionService:
             
             # Update transaction with QR code info
             transaction.qr_code_url = payment_info['qr_code']
-            transaction.expires_at = datetime.fromisoformat(payment_info['expires_at'])
+            
+            # Fix for older Python versions on VPS (Z suffix handling)
+            expires_at_str = payment_info['expires_at']
+            if expires_at_str.endswith('Z'):
+                expires_at_str = expires_at_str.replace('Z', '+00:00')
+            
+            transaction.expires_at = datetime.fromisoformat(expires_at_str)
             transaction.updated_at = datetime.utcnow()
             
             db.session.commit()
@@ -253,18 +219,10 @@ class TransactionService:
         except Exception as e:
             db.session.rollback()
             return None, f"Failed to create SePay payment: {str(e)}"
-        """
-        Top up user balance
-        
-        Args:
-            user_id: User ID
-            amount: Amount to add
-            payment_method: Payment method
-            payment_info: Additional payment information
-            
-        Returns:
-            tuple: (transaction, error_message)
-        """
+
+    @staticmethod
+    def topup_balance(user_id, amount, payment_method='manual', payment_info=None):
+        """Top up user balance"""
         try:
             user = db.session.get(User, user_id)
             if not user:
@@ -278,7 +236,7 @@ class TransactionService:
                 user_id=user_id,
                 transaction_type='topup',
                 amount=amount,
-                status='completed',  # In real app, this would be pending until payment confirmed
+                status='completed',
                 payment_method=payment_method,
                 payment_info=payment_info
             )
@@ -297,17 +255,7 @@ class TransactionService:
     
     @staticmethod
     def check_user_purchased_document(user_id, document_id):
-        """
-        Check if user has purchased a document
-        
-        Args:
-            user_id: User ID
-            document_id: Document ID
-            
-        Returns:
-            bool: True if purchased
-        """
-        # Check direct purchase
+        """Check if user has purchased a document"""
         direct_purchase = Transaction.query.filter_by(
             user_id=user_id,
             document_id=document_id,
@@ -335,18 +283,7 @@ class TransactionService:
     
     @staticmethod
     def get_user_transactions(user_id, page=1, per_page=20, transaction_type=None):
-        """
-        Get user transaction history
-        
-        Args:
-            user_id: User ID
-            page: Page number
-            per_page: Items per page
-            transaction_type: Filter by type
-            
-        Returns:
-            dict: {transactions, total, page, per_page, pages}
-        """
+        """Get user transaction history"""
         query = Transaction.query.filter_by(user_id=user_id)
         
         if transaction_type:
@@ -366,15 +303,7 @@ class TransactionService:
     
     @staticmethod
     def get_purchased_documents(user_id):
-        """
-        Get all documents purchased by user
-        
-        Args:
-            user_id: User ID
-            
-        Returns:
-            list: List of documents
-        """
+        """Get all documents purchased by user"""
         documents = []
         
         # Direct purchases

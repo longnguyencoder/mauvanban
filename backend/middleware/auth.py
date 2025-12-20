@@ -37,6 +37,7 @@ def token_required(fn):
             return fn(*args, current_user=user, **kwargs)
             
         except Exception as e:
+            db.session.rollback()
             return {
                 'success': False,
                 'message': 'Invalid or expired token',
@@ -82,6 +83,7 @@ def admin_required(fn):
             return fn(*args, current_user=user, **kwargs)
             
         except Exception as e:
+            db.session.rollback()
             return {
                 'success': False,
                 'message': 'Invalid or expired token',
@@ -111,6 +113,7 @@ def optional_auth(fn):
             
         except Exception:
             # If token verification fails, continue without user
+            db.session.rollback()
             return fn(*args, current_user=None, **kwargs)
     
     return wrapper

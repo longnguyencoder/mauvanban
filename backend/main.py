@@ -41,6 +41,7 @@ def create_app(config_name='development'):
     
     # Serve uploaded files
     @app.route('/uploads/documents/<path:filename>')
+    @app.route('/api/uploads/documents/<path:filename>')  # Fix for Double API Frontend issue
     def uploaded_file(filename):
         """Serve uploaded document files"""
         from flask import send_from_directory
@@ -63,14 +64,17 @@ def create_app(config_name='development'):
             'status': 'healthy'
         }
     
-    # Custom JSON Provider for Decimal serialization
+    # Custom JSON Provider for Decimal and UUID serialization
     from flask.json.provider import DefaultJSONProvider
     from decimal import Decimal
+    from uuid import UUID
 
     class CustomJSONProvider(DefaultJSONProvider):
         def default(self, obj):
             if isinstance(obj, Decimal):
                 return float(obj)
+            if isinstance(obj, UUID):
+                return str(obj)
             return super().default(obj)
 
     app.json = CustomJSONProvider(app)

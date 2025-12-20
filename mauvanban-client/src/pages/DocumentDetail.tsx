@@ -140,18 +140,22 @@ export default function DocumentDetail() {
                                 <DocumentBadges />
 
                                 {/* Meta Info */}
-                                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-6 pb-6 border-b border-gray-200">
-                                    <span className="flex items-center gap-1">
-                                        <EyeIcon className="w-4 h-4" />
-                                        {doc.views_count || 0} lượt xem
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600 mb-6 pb-6 border-b border-gray-200">
+                                    <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">
+                                        <EyeIcon className="w-4 h-4 text-gray-400" />
+                                        <span className="font-medium text-gray-900">{doc.views_count || 0}</span>
+                                        <span className="text-gray-500">lượt xem</span>
                                     </span>
-                                    <span>•</span>
-                                    <span className="flex items-center gap-1">
-                                        <ArrowDownCircleIcon className="w-4 h-4" />
-                                        {doc.downloads_count || 0} lượt tải
+                                    <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">
+                                        <ArrowDownCircleIcon className="w-4 h-4 text-gray-400" />
+                                        <span className="font-medium text-gray-900">{doc.downloads_count || 0}</span>
+                                        <span className="text-gray-500">lượt tải</span>
                                     </span>
-                                    <span>•</span>
-                                    <span>{doc.category?.name || 'Chưa phân loại'}</span>
+                                    {doc.category && (
+                                        <span className="bg-primary-50 text-primary-700 px-2 py-1 rounded font-medium">
+                                            {doc.category.name}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* Description */}
@@ -165,13 +169,17 @@ export default function DocumentDetail() {
                                 <div className="flex flex-col sm:flex-row gap-4">
                                     <button
                                         onClick={handleDownload}
-                                        className={`btn-download justify-center ${doc.has_purchased ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                                        className={`btn-download flex-1 sm:flex-none justify-center ${doc.has_purchased ? 'bg-green-600 hover:bg-green-700' : ''}`}
                                     >
-                                        <ArrowDownTrayIcon className="w-6 h-6" />
-                                        <span>{doc.has_purchased ? 'TẢI VỀ (ĐÃ MUA)' : 'TẢI NGAY'}</span>
-                                        <span className="font-bold">
-                                            {doc.has_purchased ? '' : (doc.price === 0 ? 'MIỄN PHÍ' : `${doc.price.toLocaleString()}₫`)}
-                                        </span>
+                                        <ArrowDownTrayIcon className="w-6 h-6 flex-shrink-0" />
+                                        <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+                                            <span className="whitespace-nowrap">{doc.has_purchased ? 'TẢI VỀ (ĐÃ MUA)' : 'TẢI NGAY'}</span>
+                                            {!doc.has_purchased && (
+                                                <span className="font-bold opacity-90 text-sm sm:text-lg">
+                                                    {doc.price === 0 ? 'MIỄN PHÍ' : `${doc.price.toLocaleString()}₫`}
+                                                </span>
+                                            )}
+                                        </div>
                                     </button>
                                 </div>
 
