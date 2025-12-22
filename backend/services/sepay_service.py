@@ -134,66 +134,90 @@ class SepayService:
         Process payment webhook from SePay
         
         Args:
-            data: Webhook data
+            data: Webhook data dict
             
         Returns:
             tuple: (success, message)
         """
         try:
-            # Extract data
-            transaction_code = data.get('transferContent') or data.get('content')
-            amount = int(data.get('transferAmount') or data.get('amount', 0))
-            sepay_transaction_id = data.get('id') or data.get('transaction_id')
-            status = data.get('status', 'success')
+            # 1. Extract data - support both CamelCase (SePay Docs) and snake_case
+            # Mapping based on SePay Webhook documentation
+            gateway = data.get('gateway')
+            account_number = data.get('accountNumber') or data.get('account_number')
+            transfer_type = data.get('transferType') or data.get('transfer_type', 'in')
+            transfer_amount = float(data.get('transferAmount') or data.get('amount') or 0)
+            accumulated = float(data.get('accumulated') or 0)
             
-            if not transaction_code:
-                return False, 'Missing transaction code'
+            # Content is the most important field for matching
+            transaction_content = data.get('content') or data.get('transferContent') or ""
+            reference_code = data.get('referenceCode') or data.get('reference_number')
+            sepay_transaction_id = str(data.get('id') or data.get('transaction_id') or "")
             
-            # Extract transaction ID from code (DH{id})
-            if not transaction_code.startswith('DH'):
-                return False, 'Invalid transaction code format'
+            current_app.logger.info(f"Processing SePay webhook: ID={sepay_transaction_id}, Content='{transaction_content}', Amount={transfer_amount}")
+
+            if not transaction_content:
+                return False, 'Missing transaction content'
             
-            # Find transaction by code
+            if transfer_type != 'in' and transfer_type != 'IN':
+                return True, 'Not a credit transaction, skipping'
+
+            # 2. Match transaction by content (looking for DHXXXXXXXX)
+            # We use a case-insensitive search to be safe
+            import re
+            match = re.search(r'DH([A-Z0-9]{8})', transaction_content.upper())
+            
+            if not match:
+                current_app.logger.warning(f"No order code (DH...) found in content: {transaction_content}")
+                return False, 'No order code found in content'
+            
+            order_code_suffix = match.group(1)
+            
+            # Find transaction in DB
+            # We match by the last 8 characters of the UUID which we used to generate the code
             transaction = Transaction.query.filter(
-                Transaction.id.like(f'%{transaction_code[2:]}')
+                Transaction.id.ilike(f'%{order_code_suffix}')
             ).first()
             
             if not transaction:
-                current_app.logger.warning(f"Transaction not found for code: {transaction_code}")
-                return False, 'Transaction not found'
+                current_app.logger.warning(f"No transaction found in database for code suffix: {order_code_suffix}")
+                return False, f'Transaction not found for code suffix {order_code_suffix}'
             
-            # Check if already processed
+            # 3. Validation
             if transaction.payment_status == 'completed':
                 return True, 'Transaction already processed'
             
-            # Verify amount
-            if amount != transaction.amount:
-                current_app.logger.error(f"Amount mismatch: expected {transaction.amount}, got {amount}")
-                return False, 'Amount mismatch'
+            # Allow a small difference (e.g. transfer fees if any) but usually it should match
+            if abs(transfer_amount - float(transaction.amount)) > 10: 
+                current_app.logger.error(f"Amount mismatch for {transaction.id}: Expected {transaction.amount}, got {transfer_amount}")
+                return False, f'Amount mismatch: expected {transaction.amount}, got {transfer_amount}'
             
-            # Update transaction
-            if status == 'success':
-                transaction.payment_status = 'completed'
-                transaction.status = 'completed'  # Important: Unlock content
-            else:
-                transaction.payment_status = 'failed'
-                # transaction.status remains 'pending' or set to 'failed' depending on logic
-                # usually keep pending to allow retry or manual fix, but here failed payment means failed transaction
-                
+            # 4. Success - Update transaction and related entities
+            transaction.payment_status = 'completed'
+            transaction.status = 'completed'
             transaction.sepay_transaction_id = sepay_transaction_id
-            transaction.sepay_data = data
+            transaction.sepay_data = data # Store full payload for audit
             transaction.updated_at = datetime.utcnow()
             
+            # If it's a top-up, we might need to update balance here if not handled elsewhere
+            # But usually TransactionService handles 'topup' type status changes.
+            if transaction.transaction_type == 'topup':
+                user = transaction.user
+                if user:
+                    from decimal import Decimal
+                    user.balance += Decimal(str(transfer_amount))
+                    current_app.logger.info(f"Top-up completed for user {user.id}, new balance: {user.balance}")
+
             db.session.commit()
-            
-            current_app.logger.info(f"SePay payment processed: {transaction.id}")
+            current_app.logger.info(f"Successfully processed SePay payment for transaction {transaction.id}")
             
             return True, 'Payment processed successfully'
             
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"SePay webhook processing error: {str(e)}")
-            return False, f"Failed to process webhook: {str(e)}"
+            import traceback
+            current_app.logger.error(traceback.format_exc())
+            return False, f"Internal error processing webhook: {str(e)}"
     
     @staticmethod
     def check_transaction_status(transaction_id):

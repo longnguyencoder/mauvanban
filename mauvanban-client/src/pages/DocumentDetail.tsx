@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { documentsApi } from '../api/documents';
 import { API_BASE_URL } from '../api/axios';
 import { useAuthStore } from '../store/authStore';
+import { toast } from 'react-hot-toast';
 import PaymentModal from '../components/common/PaymentModal';
 import DocumentBadges from '../components/DocumentBadges';
 import DocumentGuideSection from '../components/DocumentGuideSection';
@@ -92,8 +93,20 @@ export default function DocumentDetail() {
     const handlePaymentSuccess = async () => {
         setIsPaymentModalOpen(false);
         // Refetch document data to update has_purchased status
-        await refetch();
-        alert('Thanh toán thành công! Bạn đã có thể tải tài liệu.');
+        const { data: updatedData } = await refetch();
+
+        const updatedDoc = updatedData?.data.data;
+        if (updatedDoc && updatedDoc.has_purchased) {
+            try {
+                // Automatically trigger download
+                const res = await documentsApi.download(updatedDoc.id);
+                window.open(res.data.data.download_url, '_blank');
+                toast.success('Thanh toán thành công! Đang tải tài liệu...');
+            } catch (err) {
+                console.error('Download error after payment', err);
+                alert('Thanh toán thành công! Bạn có thể nhấn nút Tải về để lấy tài liệu.');
+            }
+        }
     };
 
     return (

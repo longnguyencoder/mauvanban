@@ -784,28 +784,28 @@ class AdminStats(Resource):
         """Get dashboard stats"""
         from models import Document, User, Transaction, Category, db
         from sqlalchemy import func
-        
+        from datetime import datetime, time
+
         # 1. Total Documents
         total_documents = Document.query.count()
-        
-        # 2. Total Users (excluding admins)
-        total_users = User.query.filter(User.role != 'user').count() # Typo in original? '!= admin'?
-        # Original: User.query.filter(User.role != 'admin').count()
-        total_users = User.query.filter(User.role == 'user').count()
-        
-        new_users_today = User.query.filter(func.date(User.created_at) == func.current_date()).count()
-        
-        # 3. Revenue (Total successful transactions of type 'deposit' or 'purchase')
-        # Using 'topup' as per previous context for revenue from deposits
+
+        # 2. Total Users
+        total_users = User.query.count()
+
+        # New users today (robust date range query)
+        today_start = datetime.combine(datetime.utcnow().date(), time.min)
+        new_users_today = User.query.filter(User.created_at >= today_start).count()
+
+        # 3. Revenue (Total successful transactions of type 'topup')
         total_revenue = db.session.query(func.sum(Transaction.amount)).filter(
             Transaction.transaction_type == 'topup',
             Transaction.status == 'completed'
         ).scalar() or 0
-        
+
         # 4. Total Views/Downloads
         total_views = db.session.query(func.sum(Document.views_count)).scalar() or 0
         total_downloads = db.session.query(func.sum(Document.downloads_count)).scalar() or 0
-        
+
         return {
             'success': True,
             'data': {
