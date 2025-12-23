@@ -46,7 +46,10 @@ class Config:
     MAX_PAGE_SIZE = int(os.getenv('MAX_PAGE_SIZE', 100))
     
     # CORS
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'https://mauvanban.zluat.vn,http://localhost:3000,http://localhost:5173').split(',')
+    
+    # Frontend URL (for Sitemap)
+    FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://mauvanban.zluat.vn')
     
     # API
     API_TITLE = 'Mẫu Văn Bản API'
@@ -56,6 +59,10 @@ class Config:
     OPENAPI_URL_PREFIX = '/'
     OPENAPI_SWAGGER_UI_PATH = '/api/docs'
     OPENAPI_SWAGGER_UI_URL = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist/'
+    
+    # AI - Hugging Face
+    HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
+    HUGGINGFACE_MODEL_NEWS = os.getenv('HUGGINGFACE_MODEL_NEWS', 'Qwen/Qwen2-7B-Instruct')
     
     # Restx
     RESTX_MASK_SWAGGER = False

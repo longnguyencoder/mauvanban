@@ -1,5 +1,5 @@
 """
-SePay Payment Controller
+SePay Payment Controller - FIXED VERSION
 Handles webhook callbacks and payment status checks
 """
 from flask import request, current_app
@@ -36,7 +36,9 @@ class SepayCreate(Resource):
                     'message': 'Missing item_type or item_id'
                 }, 400
             
-            payment_info, error = TransactionService.create_sepay_payment(current_user.id, item_type, item_id)
+            payment_info, error = TransactionService.create_sepay_payment(
+                current_user.id, item_type, item_id
+            )
             
             if error:
                 return {
@@ -51,6 +53,8 @@ class SepayCreate(Resource):
             
         except Exception as e:
             current_app.logger.error(f"SePay create error: {str(e)}")
+            import traceback
+            current_app.logger.error(traceback.format_exc())
             return {
                 'success': False,
                 'message': 'Failed to create payment'
@@ -59,37 +63,54 @@ class SepayCreate(Resource):
 
 @sepay_ns.route('/webhook')
 class SepayWebhook(Resource):
-    """SePay webhook endpoint"""
+    """
+    FIXED: SePay webhook endpoint with proper authentication
+    """
     
     @sepay_ns.doc(description='Receive webhook from SePay')
     def post(self):
         """Process SePay webhook"""
         try:
-            # Get raw payload and signature
-            payload = request.get_data(as_text=True)
-            signature = request.headers.get('X-Sepay-Signature', '')
+            # Log all headers for debugging
+            headers_dict = dict(request.headers)
+            current_app.logger.info("=== SePay Webhook Received ===")
+            current_app.logger.info(f"Headers: {json.dumps(headers_dict, indent=2)}")
             
-            # Parse JSON data first for logging
+            # Get raw payload
+            payload = request.get_data(as_text=True)
+            current_app.logger.info(f"Raw Payload: {payload}")
+            
+            # FIXED: Get authorization header (support both cases)
+            auth_header = (
+                request.headers.get('authorization') or  # lowercase
+                request.headers.get('Authorization') or  # uppercase
+                ''
+            )
+            
+            current_app.logger.info(f"Auth header: {auth_header[:50]}...")
+            
+            # Parse JSON data
             try:
                 data = json.loads(payload)
-                current_app.logger.info(f"SePay webhook received: {json.dumps(data, indent=2)}")
-            except json.JSONDecodeError:
-                current_app.logger.error("SePay webhook received but failed to parse JSON")
+            except json.JSONDecodeError as e:
+                current_app.logger.error(f"Invalid JSON: {str(e)}")
                 return {
                     'success': False,
                     'message': 'Invalid JSON payload'
                 }, 400
             
-            # Verify signature (if enabled)
-            # In some development environments, signature might be missing or different
-            if not SepayService.verify_webhook_signature(payload, signature):
-                current_app.logger.warning(f"Invalid SePay webhook signature. Received: {signature}")
-                # For now, we allow it but log a warning (User's PHP example didn't have authentication)
-                # However, for production it's better to verify.
-                # return {'success': False, 'message': 'Invalid signature'}, 401
+            # FIXED: Verify API key (not signature!)
+            if not SepayService.verify_webhook_api_key(auth_header):
+                current_app.logger.error("Invalid webhook authentication")
+                return {
+                    'success': False,
+                    'message': 'Invalid authentication'
+                }, 401
             
             # Process webhook
             success, message = SepayService.process_payment_webhook(data)
+            
+            current_app.logger.info(f"Processing result: {success}, {message}")
             
             if success:
                 return {
@@ -97,15 +118,18 @@ class SepayWebhook(Resource):
                     'message': message
                 }, 200
             else:
+                # Return 200 to prevent SePay retry for known errors
                 return {
                     'success': False,
                     'message': message
-                }, 400
+                }, 200
                 
         except Exception as e:
             current_app.logger.error(f"SePay webhook error: {str(e)}")
             import traceback
             current_app.logger.error(traceback.format_exc())
+            
+            # Return 500 to trigger SePay retry
             return {
                 'success': False,
                 'message': 'Internal server error'
@@ -121,13 +145,30 @@ class SepayCheck(Resource):
     def get(self, current_user, transaction_id):
         """Check transaction status"""
         try:
+            # FIXED: Add authorization check
+            from models import Transaction
+            transaction = Transaction.query.get(transaction_id)
+            
+            if not transaction:
+                return {
+                    'success': False,
+                    'message': 'Transaction not found'
+                }, 404
+            
+            # Check if transaction belongs to current user
+            if transaction.user_id != current_user.id:
+                return {
+                    'success': False,
+                    'message': 'Unauthorized'
+                }, 403
+            
             result, error = SepayService.check_transaction_status(transaction_id)
             
             if error:
                 return {
                     'success': False,
                     'message': error
-                }, 404
+                }, 400
             
             return {
                 'success': True,
@@ -136,6 +177,8 @@ class SepayCheck(Resource):
             
         except Exception as e:
             current_app.logger.error(f"SePay check error: {str(e)}")
+            import traceback
+            current_app.logger.error(traceback.format_exc())
             return {
                 'success': False,
                 'message': 'Failed to check status'
@@ -151,6 +194,23 @@ class SepayCancel(Resource):
     def post(self, current_user, transaction_id):
         """Cancel payment"""
         try:
+            # FIXED: Add authorization check
+            from models import Transaction
+            transaction = Transaction.query.get(transaction_id)
+            
+            if not transaction:
+                return {
+                    'success': False,
+                    'message': 'Transaction not found'
+                }, 404
+            
+            # Check if transaction belongs to current user
+            if transaction.user_id != current_user.id:
+                return {
+                    'success': False,
+                    'message': 'Unauthorized'
+                }, 403
+            
             success, message = SepayService.cancel_payment(transaction_id)
             
             if success:
@@ -166,7 +226,59 @@ class SepayCancel(Resource):
                 
         except Exception as e:
             current_app.logger.error(f"SePay cancel error: {str(e)}")
+            import traceback
+            current_app.logger.error(traceback.format_exc())
             return {
                 'success': False,
                 'message': 'Failed to cancel payment'
+            }, 500
+
+
+@sepay_ns.route('/test')
+class SepayTest(Resource):
+    """
+    NEW: Test webhook endpoint (development only)
+    """
+    
+    @sepay_ns.doc(description='Test SePay webhook (dev only)')
+    def post(self):
+        """Test webhook with sample data"""
+        # Only allow in development
+        if not current_app.config.get('DEBUG'):
+            return {
+                'success': False,
+                'message': 'Only available in debug mode'
+            }, 403
+        
+        try:
+            data = request.get_json() or {}
+            
+            # Create test webhook data
+            test_data = {
+                'id': data.get('id', 'test_12345'),
+                'gateway': data.get('gateway', 'ACB'),
+                'transaction_content': data.get('content', 'LOCSPAY000324416 DH12345678'),
+                'content': data.get('content', 'LOCSPAY000324416 DH12345678'),
+                'transferAmount': data.get('amount', 50000),
+                'amount_in': data.get('amount', 50000),
+                'transferType': 'in',
+                'transfer_type': 'in',
+                **data
+            }
+            
+            current_app.logger.info(f"Test webhook data: {json.dumps(test_data, indent=2)}")
+            
+            success, message = SepayService.process_payment_webhook(test_data)
+            
+            return {
+                'success': success,
+                'message': message,
+                'test_data': test_data
+            }, 200
+            
+        except Exception as e:
+            current_app.logger.error(f"Test webhook error: {str(e)}")
+            return {
+                'success': False,
+                'message': str(e)
             }, 500

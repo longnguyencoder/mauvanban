@@ -44,6 +44,9 @@ export default function Header() {
                             <Link to="/contact" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50">
                                 Liên hệ
                             </Link>
+                            <Link to="/news" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50">
+                                Tin tức
+                            </Link>
                         </div>
 
                         {isAuthenticated ? (
@@ -137,6 +140,9 @@ export default function Header() {
                         </Link>
                         <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 text-gray-700 font-medium p-2 hover:bg-primary-50 hover:text-primary-600 rounded-lg transition">
                             <Bars3Icon className="w-5 h-5" /> Liên hệ
+                        </Link>
+                        <Link to="/news" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 text-gray-700 font-medium p-2 hover:bg-primary-50 hover:text-primary-600 rounded-lg transition">
+                            <Bars3Icon className="w-5 h-5" /> Tin tức
                         </Link>
 
                         <hr className="my-2 border-gray-100" />

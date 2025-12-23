@@ -58,11 +58,77 @@ def create_app(config_name='development'):
         }
     
     @app.route('/health')
+    @app.route('/api/health')
     def health():
         return {
             'success': True,
             'status': 'healthy'
         }
+    
+    # Sitemap generation
+    @app.route('/sitemap.xml')
+    @app.route('/api/sitemap.xml')
+    def sitemap():
+        """Generate dynamic sitemap.xml"""
+        from models import Document, Category
+        from flask import make_response
+        from datetime import datetime
+        
+        frontend_url = app.config.get('FRONTEND_URL', 'https://mauvanban.zluat.vn')
+        
+        # 1. Static pages
+        pages = [
+            {'loc': f"{frontend_url}/", 'changefreq': 'daily', 'priority': '1.0'},
+            {'loc': f"{frontend_url}/documents", 'changefreq': 'daily', 'priority': '0.9'},
+            {'loc': f"{frontend_url}/categories", 'changefreq': 'weekly', 'priority': '0.8'},
+            {'loc': f"{frontend_url}/contact", 'changefreq': 'monthly', 'priority': '0.7'},
+        ]
+        
+        # 2. Add Documents
+        try:
+            documents = Document.query.filter_by(is_active=True).all()
+            for doc in documents:
+                # Use slug if available, else ID
+                doc_path = f"/documents/{doc.slug or doc.id}" if hasattr(doc, 'slug') and doc.slug else f"/documents/{doc.id}"
+                lastmod = doc.updated_at.strftime('%Y-%m-%dT%H:%M:%S+07:00') if hasattr(doc, 'updated_at') and doc.updated_at else datetime.now().strftime('%Y-%m-%dT%H:%M:%S+07:00')
+                
+                pages.append({
+                    'loc': f"{frontend_url}{doc_path}",
+                    'lastmod': lastmod,
+                    'changefreq': 'weekly',
+                    'priority': '0.8'
+                })
+        except Exception as e:
+            app.logger.error(f"Error generating sitemap documents: {e}")
+
+        # 3. Add Categories
+        try:
+            categories = Category.query.all()
+            for cat in categories:
+                pages.append({
+                    'loc': f"{frontend_url}/documents?category={cat.id}",
+                    'changefreq': 'weekly',
+                    'priority': '0.7'
+                })
+        except Exception as e:
+            app.logger.error(f"Error generating sitemap categories: {e}")
+
+        # Build XML
+        xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        for page in pages:
+            xml += '  <url>\n'
+            xml += f'    <loc>{page["loc"]}</loc>\n'
+            if 'lastmod' in page:
+                xml += f'    <lastmod>{page["lastmod"]}</lastmod>\n'
+            xml += f'    <changefreq>{page["changefreq"]}</changefreq>\n'
+            xml += f'    <priority>{page["priority"]}</priority>\n'
+            xml += '  </url>\n'
+        xml += '</urlset>'
+        
+        response = make_response(xml)
+        response.headers['Content-Type'] = 'application/xml'
+        return response
     
     # Custom JSON Provider for Decimal and UUID serialization
     from flask.json.provider import DefaultJSONProvider

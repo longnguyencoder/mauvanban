@@ -1,81 +1,106 @@
 
 import os
-import requests
-import hmac
-import hashlib
 import json
 import sys
+import hmac
+import hashlib
+from urllib import request, parse
 
-# Load env from .env file manually if needed, or rely on user having it set
-# Ideally, we read .env
-from dotenv import load_dotenv
+def load_env_manually(env_path):
+    """Đọc file .env mà không cần thư viện bên ngoài"""
+    env_vars = {}
+    if os.path.exists(env_path):
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if '=' in line:
+                    key, value = line.split('=', 1)
+                    env_vars[key.strip()] = value.strip().strip('"').strip("'")
+    return env_vars
 
+# Tìm file .env
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 env_path = os.path.join(parent_dir, '.env')
-load_dotenv(env_path)
 
-API_URL = "http://localhost:5000/api/sepay/webhook"
-SEPAY_SECRET_KEY = os.getenv('SEPAY_SECRET_KEY')
+# Load cấu hình
+config = load_env_manually(env_path)
+
+# CONFIGURATION
+API_URL = config.get('WEBHOOK_TEST_URL', "http://localhost:5000/api/sepay/webhook")
+SEPAY_SECRET_KEY = config.get('SEPAY_SECRET_KEY')
+SEPAY_VIRTUAL_ACCOUNT = config.get('SEPAY_VIRTUAL_ACCOUNT', '')
+SEPAY_BANK_NAME = config.get('SEPAY_BANK_NAME', 'ACB')
+SEPAY_BANK_ACCOUNT = config.get('SEPAY_BANK_ACCOUNT', '9924666')
 
 if not SEPAY_SECRET_KEY:
-    print("Error: SEPAY_SECRET_KEY not found in .env")
+    print("Error: SEPAY_SECRET_KEY không tìm thấy trong file .env")
     sys.exit(1)
 
-def simulate_webhook(transaction_id, amount):
-    # Construct transaction code used in payment
-    transaction_code = f"MVB{str(transaction_id)[-8:].upper()}"
+def simulate_webhook(transaction_id_suffix, amount):
+    # 1. Tạo nội dung chuyển khoản
+    transaction_code = f"DH{transaction_id_suffix.upper()}"
     
+    if SEPAY_VIRTUAL_ACCOUNT:
+        full_content = f"{SEPAY_VIRTUAL_ACCOUNT} {transaction_code}"
+    else:
+        full_content = transaction_code
+        
     payload = {
-        "id": "SIMULATED_" + transaction_code,
-        "gateway": "VCB",
-        "transactionDate": "2023-10-27 10:00:00",
-        "accountNumber": "1012121212",
-        "subAccount": None,
+        "id": f"SIM_{transaction_id_suffix}_{os.urandom(2).hex()}",
+        "gateway": SEPAY_BANK_NAME,
+        "transactionDate": "2024-01-01 10:00:00",
+        "accountNumber": SEPAY_BANK_ACCOUNT,
         "transferAmount": amount,
-        "transferContent": transaction_code,
-        "referenceCode": "REF123",
-        "description": "Simulated payment",
+        "transferContent": full_content,
+        "content": full_content,
+        "transferType": "in",
         "status": "success"
     }
     
-    payload_json = json.dumps(payload)
+    payload_json = json.dumps(payload).encode('utf-8')
     
-    # Calculate signature
-    signature = hmac.new(
-        SEPAY_SECRET_KEY.encode('utf-8'),
-        payload_json.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
-    
+    # 2. Tạo Header xác thực
     headers = {
         "Content-Type": "application/json",
-        "X-Sepay-Signature": signature
+        "Authorization": f"<policy {SEPAY_SECRET_KEY}>",
+        "User-Agent": "SePay-Simulated-Client/2.0"
     }
     
-    print(f"Sending webhook to {API_URL}...")
-    print(f"Payload: {json.dumps(payload, indent=2)}")
+    print(f"--- GIẢ LẬP WEBHOOK SEPAY (STANDALONE) ---")
+    print(f"Target URL: {API_URL}")
+    print(f"Virtual Account: {SEPAY_VIRTUAL_ACCOUNT}")
+    print(f"Full Content: {full_content}")
+    print(f"Amount: {amount:,} VND")
+    print("-" * 40)
     
     try:
-        response = requests.post(API_URL, data=payload_json, headers=headers)
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.text}")
-        
-        if response.status_code == 200:
-            print("\n✅ Webhook simulated successfully! The transaction should now be COMPLETED.")
-        else:
-            print("\n❌ Webhook failed.")
+        req = request.Request(API_URL, data=payload_json, headers=headers, method='POST')
+        with request.urlopen(req, timeout=10) as response:
+            status = response.getcode()
+            body = response.read().decode('utf-8')
             
+            print(f"Status Code: {status}")
+            print(f"Response: {body}")
+            
+            if status == 200:
+                print("\n✅ Webhook gửi THÀNH CÔNG!")
+            else:
+                print(f"\n❌ Webhook trả về lỗi {status}")
+                
     except Exception as e:
-        print(f"Error sending request: {e}")
+        print(f"\n❌ Lỗi kết nối: {e}")
+        print("Gợi ý: Nếu chạy trên VPS, hãy đảm bảo URL là https://mauvanban.vn/api/sepay/webhook")
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python scripts/simulate_sepay_webhook.py <transaction_id> <amount>")
-        print("Example: python scripts/simulate_sepay_webhook.py 550e8400-e29b-41d4-a716-446655440000 50000")
+        print("Cách dùng: python3 scripts/simulate_sepay_webhook.py <8_số_cuối_ID> <số_tiền>")
+        print("Ví dụ: python3 scripts/simulate_sepay_webhook.py F242FF41 56000")
         sys.exit(1)
         
-    transaction_id = sys.argv[1]
-    amount = int(sys.argv[2])
+    tx_id = sys.argv[1]
+    amt = int(sys.argv[2])
     
-    simulate_webhook(transaction_id, amount)
+    simulate_webhook(tx_id, amt)

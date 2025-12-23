@@ -119,8 +119,12 @@ class DocumentDetail(Resource):
                 document.id
             )
         
+        # Get related documents
+        related = DocumentService.get_related_documents(document.id, document.category_id)
+        
         data = document.to_dict(include_guide=True, include_category=True)
         data['has_purchased'] = has_purchased
+        data['related_documents'] = [r.to_dict() for r in related]
         
         return {
             'success': True,
@@ -223,13 +227,47 @@ class DownloadDocument(Resource):
         DocumentService.increment_download(id)
         
         # Get document
+        # Get document
         document = DocumentService.get_document_by_id(id)
         
+        # Get base URL for absolute file path
+        from flask import current_app
+        api_base_url = current_app.config.get('FRONTEND_URL', 'https://mauvanban.zluat.vn')
+        
+        def get_full_url(path):
+            if not path: return None
+            if path.startswith('http'): return path
+            return f"{api_base_url}{'' if path.startswith('/') else '/'}{path}"
+
+        # Get main file info
+        full_url = get_full_url(document.file_url)
+
+        # Get all attached files if they exist
+        files_list = []
+        if hasattr(document, 'files') and document.files:
+            for f in document.files:
+                files_list.append({
+                    'id': f.id,
+                    'original_filename': f.original_filename,
+                    'file_type': f.file_type,
+                    'download_url': get_full_url(f.file_url)
+                })
+        
+        # If no files in document_files, use the main file_url
+        if not files_list and full_url:
+            files_list.append({
+                'id': 'main',
+                'original_filename': f"{document.title}.{document.file_type}",
+                'file_type': document.file_type,
+                'download_url': full_url
+            })
+
         return {
             'success': True,
             'message': 'Document ready for download',
             'data': {
-                'file_url': document.file_url,
+                'download_url': full_url, # Main file for legacy support
+                'files': files_list,      # Full list of files for multi-file support
                 'file_type': document.file_type
             }
         }, 200

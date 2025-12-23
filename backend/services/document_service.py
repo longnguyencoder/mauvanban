@@ -287,6 +287,30 @@ class DocumentService:
             return False, f'Failed to delete document: {str(e)}'
     
     @staticmethod
+    def get_related_documents(document_id, category_id, limit=4):
+        """
+        Get related documents in the same category
+        
+        Args:
+            document_id: Current document ID (to exclude)
+            category_id: Category ID
+            limit: Number of documents to return
+            
+        Returns:
+            list: List of related documents
+        """
+        try:
+            related = Document.query.filter(
+                Document.category_id == category_id,
+                Document.id != document_id,
+                Document.is_active == True
+            ).limit(limit).all()
+            
+            return related
+        except Exception:
+            return []
+
+    @staticmethod
     def increment_view(document_id):
         """Increment document view count"""
         try:

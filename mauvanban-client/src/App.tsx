@@ -12,6 +12,8 @@ import DocumentDetail from './pages/DocumentDetail';
 import Categories from './pages/Categories';
 import Profile from './pages/Profile';
 import Contact from './pages/Contact';
+import NewsList from './pages/NewsList';
+import NewsDetail from './pages/NewsDetail';
 
 // Admin Pages
 import AdminLayout from './components/layout/AdminLayout';
@@ -23,6 +25,7 @@ import CategoryList from './pages/admin/categories/CategoryList';
 import CreateCategory from './pages/admin/categories/CreateCategory';
 import UserList from './pages/admin/users/UserList';
 import EditUser from './pages/admin/users/EditUser';
+import AdminNews from './pages/admin/AdminNews';
 
 import CreateUser from './pages/admin/users/CreateUser';
 
@@ -51,6 +54,8 @@ function App() {
                     <Route path="/categories" element={<Categories />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/contact" element={<Contact />} />
+                    <Route path="/news" element={<NewsList />} />
+                    <Route path="/news/:slug" element={<NewsDetail />} />
 
                     {/* Admin Routes */}
                     <Route path="/admin" element={<AdminLayout />}>
@@ -58,6 +63,7 @@ function App() {
                         <Route path="documents" element={<DocumentList />} />
                         <Route path="documents/create" element={<CreateDocument />} />
                         <Route path="documents/edit/:id" element={<EditDocument />} />
+                        <Route path="news" element={<AdminNews />} />
 
                         <Route path="categories" element={<CategoryList />} />
                         <Route path="categories/create" element={<CreateCategory />} />

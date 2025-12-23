@@ -20,6 +20,7 @@ from .package_document import PackageDocument
 from .saved_document import SavedDocument
 from .transaction import Transaction
 from .reported_document import ReportedDocument
+from .news import News
 
 __all__ = [
     'db',
@@ -34,5 +35,6 @@ __all__ = [
     'PackageDocument',
     'SavedDocument',
     'Transaction',
-    'ReportedDocument'
+    'ReportedDocument',
+    'News'
 ]

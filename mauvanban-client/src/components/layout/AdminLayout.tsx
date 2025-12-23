@@ -14,8 +14,9 @@ export default function AdminLayout() {
         { title: 'Quản lý Văn bản', path: '/admin/documents', icon: '📄' },
         { title: 'Danh mục', path: '/admin/categories', icon: '📂' },
         { title: 'Người dùng', path: '/admin/users', icon: '👥' },
-        { title: 'Gói dịch vụ', path: '/admin/packages', icon: '📦' },
-        { title: 'Tiền tệ & GD', path: '/admin/transactions', icon: '💰' },
+        { title: 'Quản lý tin tức', path: '/admin/news', icon: '📰' },
+        // { title: 'Gói dịch vụ', path: '/admin/packages', icon: '📦' },
+        // { title: 'Tiền tệ & GD', path: '/admin/transactions', icon: '💰' },
     ];
 
     return (
@@ -34,8 +35,8 @@ export default function AdminLayout() {
                                 <Link
                                     to={item.path}
                                     className={`flex items-center gap-3 px-6 py-3 text-sm font-medium transition-colors ${location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path))
-                                            ? 'bg-primary-600 text-white'
-                                            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                        ? 'bg-primary-600 text-white'
+                                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                                         }`}
                                 >
                                     <span className="text-xl">{item.icon}</span>

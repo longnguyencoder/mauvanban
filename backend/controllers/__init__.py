@@ -57,6 +57,7 @@ from .admin_controller import admin_ns
 from .upload_controller import upload_ns
 from .contact_controller import contact_ns
 from .sepay_controller import sepay_ns
+from .news_controller import news_ns
 
 # Add namespaces
 api.add_namespace(auth_ns, path='/auth')
@@ -68,5 +69,6 @@ api.add_namespace(admin_ns, path='/admin')
 api.add_namespace(upload_ns, path='/upload')
 api.add_namespace(contact_ns, path='/contact')
 api.add_namespace(sepay_ns, path='/sepay')
+api.add_namespace(news_ns, path='/news')
 
 __all__ = ['api']

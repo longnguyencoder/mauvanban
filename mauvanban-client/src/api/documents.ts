@@ -31,6 +31,7 @@ export interface Document {
     is_featured?: boolean;
     has_purchased?: boolean;
     files?: DocumentFile[];
+    related_documents?: Document[];
 }
 
 export interface DocumentListResponse {
@@ -66,7 +67,7 @@ export const documentsApi = {
         api.get<{ success: boolean; data: Document }>(`/documents/${slug}`),
 
     download: (id: number | string) =>
-        api.post<{ success: boolean; data: { download_url: string } }>(`/documents/${id}/download`),
+        api.post<{ success: boolean; data: { download_url: string; files?: any[] } }>(`/documents/${id}/download`),
 
     // Admin methods
     update: (id: number | string, data: any) =>
